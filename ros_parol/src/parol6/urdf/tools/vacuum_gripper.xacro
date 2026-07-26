@@ -15,11 +15,11 @@
 
     <link name="tool_body">
       <visual>
-        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry><mesh filename="package://parol6/meshes/vacuum_gripper_body_simplified.stl" /></geometry>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry><mesh filename="package://parol6/meshes/vacuum_gripper_body_simplified.stl" /></geometry>
       </collision>
     </link>

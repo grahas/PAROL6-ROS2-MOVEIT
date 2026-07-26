@@ -46,17 +46,18 @@
       <xacro:property name="tcp_xyz" value="0.0 0.0 -0.082" />
     </xacro:unless>
 
-    <!-- Body: fixed to the flange. All parol6 tool meshes are authored with
-         an Rx(pi) convention relative to the flange/kinematic frame. The
-         kinematic chain (TCP transform, jaw axes) stays pure translation,
-         and the rotation is applied only to mesh visuals/collisions. -->
+    <!-- Body: fixed to the flange, no rotation. All parol6 tool meshes are
+         authored directly in the flange/L6 frame (mounting face at the
+         mesh origin, body/jaws extending toward -Z, matching tcp_xyz's
+         negative Z below), confirmed by checking each mesh's own
+         bounding box against its tools.py tcp_xyz. -->
     <link name="tool_body">
       <visual>
-        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry><mesh filename="${mesh_body}" /></geometry>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry><mesh filename="${mesh_body}" /></geometry>
       </collision>
     </link>
@@ -66,42 +67,49 @@
       <origin xyz="0 0 0" rpy="0 0 0" />
     </joint>
 
-    <!-- Jaws: prismatic, symmetric (move in opposite directions along the
-         same axis). Not ros2_control-actuated, see file header. -->
+    <!-- Jaws: fixed at their as-modeled mesh position (jaw_axis/jaw_travel
+         above describe the real linear travel for documentation, but
+         aren't applied to a movable joint here). These would need to be
+         prismatic to actually animate open/closed, but a prismatic (or
+         any non-fixed) joint requires a live position from /joint_states
+         to resolve its transform at all, and since these joints aren't
+         ros2_control-actuated (see file header) and nothing else
+         publishes a state for them, robot_state_publisher can't compute
+         their transform, and TF/RViz shows them as unresolved ("No
+         transform from tool_left_jaw to world") rather than just static.
+         Fixed avoids that entirely; animating the jaws for real would
+         need a small joint_state_publisher-style node driven by
+         RobotClient.tool.status().positions, not attempted here. -->
     <link name="tool_right_jaw">
       <visual>
-        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry><mesh filename="${mesh_right_jaw}" /></geometry>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry><mesh filename="${mesh_right_jaw}" /></geometry>
       </collision>
     </link>
-    <joint name="tool_right_jaw_joint" type="prismatic">
+    <joint name="tool_right_jaw_joint" type="fixed">
       <parent link="${parent}" />
       <child link="tool_right_jaw" />
       <origin xyz="0 0 0" rpy="0 0 0" />
-      <axis xyz="${jaw_axis_x} ${jaw_axis_y} ${jaw_axis_z}" />
-      <limit lower="0" upper="${jaw_travel}" effort="20" velocity="0.1" />
     </joint>
 
     <link name="tool_left_jaw">
       <visual>
-        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry><mesh filename="${mesh_left_jaw}" /></geometry>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry><mesh filename="${mesh_left_jaw}" /></geometry>
       </collision>
     </link>
-    <joint name="tool_left_jaw_joint" type="prismatic">
+    <joint name="tool_left_jaw_joint" type="fixed">
       <parent link="${parent}" />
       <child link="tool_left_jaw" />
       <origin xyz="0 0 0" rpy="0 0 0" />
-      <axis xyz="${-jaw_axis_x} ${-jaw_axis_y} ${-jaw_axis_z}" />
-      <limit lower="0" upper="${jaw_travel}" effort="20" velocity="0.1" />
     </joint>
 
     <!-- TCP: pure translation from the flange, matching parol6-server's
