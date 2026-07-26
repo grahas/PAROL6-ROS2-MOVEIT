@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+<!--
+  SSG-48 electric gripper (finger/pinch jaw variants).
+
+  Geometry sourced from parol6/tools.py's ElectricGripperConfig for
+  "SSG-48". See pneumatic_gripper.xacro's header for why this should be
+  re-derived from there, not hand-tuned here, if it ever needs to change.
+
+  Not wired into parol6_hardware_interface/ros2_control. Driven over the
+  serial gripper bus via rbt.tool_action("SSG-48", "move"/"open"/"close"),
+  not a ros2_control joint. Jaw joints here are visualization-only.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="parol6_tool_ssg48" params="parent variant:=finger">
+
+    <xacro:property name="mesh_body" value="package://parol6/meshes/ssg48_body_simplified.stl" />
+    <xacro:property name="mesh_right_jaw" value="package://parol6/meshes/ssg48_${variant}_right_simplified.stl" />
+    <xacro:property name="mesh_left_jaw" value="package://parol6/meshes/ssg48_${variant}_left_simplified.stl" />
+    <!-- Jaw axis/travel and TCP offset are the same for both variants -->
+    <xacro:property name="jaw_axis_x" value="0" />
+    <xacro:property name="jaw_axis_y" value="1" />
+    <xacro:property name="jaw_axis_z" value="0" />
+    <xacro:property name="jaw_travel" value="0.024" />
+    <xacro:property name="tcp_xyz" value="0.0 0.0 -0.105" />
+
+    <link name="tool_body">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <geometry><mesh filename="${mesh_body}" /></geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <geometry><mesh filename="${mesh_body}" /></geometry>
+      </collision>
+    </link>
+    <joint name="tool_body_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="tool_body" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </joint>
+
+    <link name="tool_right_jaw">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <geometry><mesh filename="${mesh_right_jaw}" /></geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <geometry><mesh filename="${mesh_right_jaw}" /></geometry>
+      </collision>
+    </link>
+    <joint name="tool_right_jaw_joint" type="prismatic">
+      <parent link="${parent}" />
+      <child link="tool_right_jaw" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <axis xyz="${jaw_axis_x} ${jaw_axis_y} ${jaw_axis_z}" />
+      <limit lower="0" upper="${jaw_travel}" effort="20" velocity="0.1" />
+    </joint>
+
+    <link name="tool_left_jaw">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <geometry><mesh filename="${mesh_left_jaw}" /></geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <geometry><mesh filename="${mesh_left_jaw}" /></geometry>
+      </collision>
+    </link>
+    <joint name="tool_left_jaw_joint" type="prismatic">
+      <parent link="${parent}" />
+      <child link="tool_left_jaw" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <axis xyz="${-jaw_axis_x} ${-jaw_axis_y} ${-jaw_axis_z}" />
+      <limit lower="0" upper="${jaw_travel}" effort="20" velocity="0.1" />
+    </joint>
+
+    <link name="tool_tcp" />
+    <joint name="tool_tcp_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="tool_tcp" />
+      <origin xyz="${tcp_xyz}" rpy="0 0 0" />
+    </joint>
+
+  </xacro:macro>
+</robot>

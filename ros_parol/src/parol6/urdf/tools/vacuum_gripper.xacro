@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!--
+  Vacuum gripper. Pneumatic valve controlled, no moving parts, no
+  variants. Geometry sourced from parol6/tools.py's PneumaticGripperConfig
+  for "VACUUM". See pneumatic_gripper.xacro's header for why this should
+  be re-derived from there, not hand-tuned here, if it ever needs to
+  change.
+
+  Not wired into parol6_hardware_interface/ros2_control. Driven via
+  digital I/O (rbt.tool_action("VACUUM", "open"/"close")), not a
+  ros2_control joint.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="parol6_tool_vacuum" params="parent">
+
+    <link name="tool_body">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <geometry><mesh filename="package://parol6/meshes/vacuum_gripper_body_simplified.stl" /></geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi} 0 0" />
+        <geometry><mesh filename="package://parol6/meshes/vacuum_gripper_body_simplified.stl" /></geometry>
+      </collision>
+    </link>
+    <joint name="tool_body_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="tool_body" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </joint>
+
+    <link name="tool_tcp" />
+    <joint name="tool_tcp_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="tool_tcp" />
+      <origin xyz="0.0 0.0 -0.037" rpy="0 0 0" />
+    </joint>
+
+  </xacro:macro>
+</robot>
