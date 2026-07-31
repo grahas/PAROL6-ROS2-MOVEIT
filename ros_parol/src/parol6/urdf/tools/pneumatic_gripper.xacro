@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<!--
+  Pneumatic gripper (vertical/horizontal mounting variants).
+
+  Geometry sourced from the parol6 pip package's tool registry
+  (parol6/tools.py, PneumaticGripperConfig), the same numbers
+  parol6-server itself uses for TCP offset and jaw travel, so this stays
+  consistent with what the robot's own software thinks is mounted. If you
+  change tool geometry, change it there and re-derive this file, not the
+  other way around.
+
+  Not wired into parol6_hardware_interface/ros2_control. The gripper is
+  actuated via digital I/O (rbt.tool_action("PNEUMATIC", "open"/"close")),
+  not a ros2_control joint. The jaw joints here are for visualization only
+  and default to the open position.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="parol6_tool_pneumatic" params="parent variant:=vertical">
+
+    <xacro:property name="mesh_prefix" value="package://parol6/meshes/pneumatic_gripper" />
+
+    <!-- jaw_axis_{x,y,z} are kept as separate numeric properties (not one
+         "x y z" string) so the left jaw's axis can be computed as their
+         negation below. xacro's dollar-brace syntax evaluates a Python
+         expression, so prefixing a minus sign onto an already-substituted
+         string like "0 1 0" would NOT negate the vector, it would just
+         produce the malformed literal "-0 1 0". -->
+    <xacro:if value="${variant == 'vertical'}">
+      <xacro:property name="mesh_body" value="${mesh_prefix}_vertical_body_simplified.stl" />
+      <xacro:property name="mesh_right_jaw" value="${mesh_prefix}_vertical_right_jaw_simplified.stl" />
+      <xacro:property name="mesh_left_jaw" value="${mesh_prefix}_vertical_left_jaw_simplified.stl" />
+      <xacro:property name="jaw_axis_x" value="0" />
+      <xacro:property name="jaw_axis_y" value="1" />
+      <xacro:property name="jaw_axis_z" value="0" />
+      <xacro:property name="jaw_travel" value="0.0035" />
+      <xacro:property name="tcp_xyz" value="-0.055 0.0 -0.027" />
+    </xacro:if>
+    <xacro:unless value="${variant == 'vertical'}">
+      <xacro:property name="mesh_body" value="${mesh_prefix}_horizontal_body_simplified.stl" />
+      <xacro:property name="mesh_right_jaw" value="${mesh_prefix}_horizontal_right_jaw_simplified.stl" />
+      <xacro:property name="mesh_left_jaw" value="${mesh_prefix}_horizontal_left_jaw_simplified.stl" />
+      <xacro:property name="jaw_axis_x" value="1" />
+      <xacro:property name="jaw_axis_y" value="0" />
+      <xacro:property name="jaw_axis_z" value="0" />
+      <xacro:property name="jaw_travel" value="0.01045" />
+      <xacro:property name="tcp_xyz" value="0.0 0.0 -0.082" />
+    </xacro:unless>
+
+    <!-- Body: fixed to the flange, no rotation. All parol6 tool meshes are
+         authored directly in the flange/L6 frame (mounting face at the
+         mesh origin, body/jaws extending toward -Z, matching tcp_xyz's
+         negative Z below), confirmed by checking each mesh's own
+         bounding box against its tools.py tcp_xyz. -->
+    <link name="tool_body">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry><mesh filename="${mesh_body}" /></geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry><mesh filename="${mesh_body}" /></geometry>
+      </collision>
+    </link>
+    <joint name="tool_body_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="tool_body" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </joint>
+
+    <!-- Jaws: fixed at their as-modeled mesh position (jaw_axis/jaw_travel
+         above describe the real linear travel for documentation, but
+         aren't applied to a movable joint here). These would need to be
+         prismatic to actually animate open/closed, but a prismatic (or
+         any non-fixed) joint requires a live position from /joint_states
+         to resolve its transform at all, and since these joints aren't
+         ros2_control-actuated (see file header) and nothing else
+         publishes a state for them, robot_state_publisher can't compute
+         their transform, and TF/RViz shows them as unresolved ("No
+         transform from tool_left_jaw to world") rather than just static.
+         Fixed avoids that entirely; animating the jaws for real would
+         need a small joint_state_publisher-style node driven by
+         RobotClient.tool.status().positions, not attempted here. -->
+    <link name="tool_right_jaw">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry><mesh filename="${mesh_right_jaw}" /></geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry><mesh filename="${mesh_right_jaw}" /></geometry>
+      </collision>
+    </link>
+    <joint name="tool_right_jaw_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="tool_right_jaw" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </joint>
+
+    <link name="tool_left_jaw">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry><mesh filename="${mesh_left_jaw}" /></geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry><mesh filename="${mesh_left_jaw}" /></geometry>
+      </collision>
+    </link>
+    <joint name="tool_left_jaw_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="tool_left_jaw" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </joint>
+
+    <!-- TCP: pure translation from the flange, matching parol6-server's
+         own PneumaticGripperConfig.transform for this variant. -->
+    <link name="tool_tcp" />
+    <joint name="tool_tcp_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="tool_tcp" />
+      <origin xyz="${tcp_xyz}" rpy="0 0 0" />
+    </joint>
+
+  </xacro:macro>
+</robot>

@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<!--
+  PAROL6 arm with an optional end-of-arm tool selected via xacro args,
+  instead of one URDF per tool combination.
+
+  Args:
+    tool           : "none" (default), "pneumatic", "ssg48", "msg", or "vacuum"
+    tool_variant   : meaning depends on tool
+                       pneumatic: "vertical" (default) or "horizontal"
+                       ssg48:     "finger" (default) or "pinch"
+                       msg:       "100mm" (default), "150mm", or "200mm"
+                       vacuum:    ignored, no variants
+                       none:      ignored
+
+  The tool, if any, mounts on L6 (the wrist flange) and always exposes a
+  "tool_tcp" frame at the tool's actual working point (needle tip,
+  gripper-jaw midpoint, suction cup face, etc.) regardless of which tool is
+  selected, so anything downstream (MoveIt's IK target frame, a Cartesian
+  move, RViz) can target "tool_tcp" without caring which tool is mounted.
+  When tool="none", "tool_tcp" is just L6 itself (the bare flange).
+
+  Geometry (mesh files, TCP offsets, jaw travel/axis) is taken from the
+  parol6 pip package's tool registry (parol6/tools.py), the same numbers
+  parol6-server itself uses, so this stays consistent with what the
+  robot's own software thinks is mounted. If tool geometry ever changes,
+  change it there and re-derive these files, not the other way around.
+
+  This file has no ros2_control or hardware-interface content of its own,
+  and none of the tool geometry here is wired into any hardware interface.
+  Grippers are actuated through parol6's own tool_action()/select_tool()
+  API (digital I/O or the serial gripper bus), not ros2_control joints.
+  Consumers that need ros2_control (e.g. parol6_moveit's
+  parol6.ros2_control.xacro, or a bring-up package) should xacro:include
+  this file and layer their own <ros2_control> block on top.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="parol6">
+  <xacro:arg name="tool" default="none" />
+  <xacro:arg name="tool_variant" default="" />
+
+  <xacro:property name="tool" value="$(arg tool)" />
+  <xacro:property name="tool_variant" value="$(arg tool_variant)" />
+
+  <!-- Base arm: plain, non-xacro URDF. xacro splices in a raw robot
+       document's children fine via include. -->
+  <xacro:include filename="$(find parol6)/urdf/parol6.urdf" />
+
+  <xacro:include filename="$(find parol6)/urdf/tools/pneumatic_gripper.xacro" />
+  <xacro:include filename="$(find parol6)/urdf/tools/ssg48_gripper.xacro" />
+  <xacro:include filename="$(find parol6)/urdf/tools/msg_gripper.xacro" />
+  <xacro:include filename="$(find parol6)/urdf/tools/vacuum_gripper.xacro" />
+
+  <xacro:if value="${tool == 'pneumatic'}">
+    <xacro:property name="_variant" value="${tool_variant if tool_variant else 'vertical'}" />
+    <xacro:parol6_tool_pneumatic parent="L6" variant="${_variant}" />
+  </xacro:if>
+  <xacro:if value="${tool == 'ssg48'}">
+    <xacro:property name="_variant" value="${tool_variant if tool_variant else 'finger'}" />
+    <xacro:parol6_tool_ssg48 parent="L6" variant="${_variant}" />
+  </xacro:if>
+  <xacro:if value="${tool == 'msg'}">
+    <xacro:property name="_variant" value="${tool_variant if tool_variant else '100mm'}" />
+    <xacro:parol6_tool_msg parent="L6" variant="${_variant}" />
+  </xacro:if>
+  <xacro:if value="${tool == 'vacuum'}">
+    <xacro:parol6_tool_vacuum parent="L6" />
+  </xacro:if>
+
+  <!-- tool="none": no tool links at all. "tool_tcp" is just L6 itself, so
+       downstream consumers always have a "tool_tcp" frame to target. -->
+  <xacro:if value="${tool == 'none'}">
+    <link name="tool_tcp" />
+    <joint name="tool_tcp_joint" type="fixed">
+      <parent link="L6" />
+      <child link="tool_tcp" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </joint>
+  </xacro:if>
+
+</robot>
