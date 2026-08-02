@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!--
+  PAROL6 arm + tool (via parol6's own parol6_with_tools.xacro) + ros2_control,
+  for launch files that don't go through MoveIt.
+
+  Args:
+    tool, tool_variant: see $(find parol6)/urdf/parol6_with_tools.xacro
+    bridge_host, bridge_port, connect_timeout_sec: see parol6.ros2_control.xacro
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="parol6">
+  <xacro:arg name="bridge_host" default="127.0.0.1" />
+  <xacro:arg name="bridge_port" default="6001" />
+  <xacro:arg name="connect_timeout_sec" default="10.0" />
+
+  <!-- tool/tool_variant xacro:args are declared inside the included file
+       below, not here. xacro.process_file()'s mappings dict applies to
+       any xacro:arg in the final merged document, regardless of which
+       included file declared it, so this file doesn't need to redeclare
+       them itself. -->
+  <xacro:include filename="$(find parol6)/urdf/parol6_with_tools.xacro" />
+
+  <xacro:include filename="$(find parol6_bringup)/urdf/parol6.ros2_control.xacro" />
+  <xacro:parol6_ros2_control
+      bridge_host="$(arg bridge_host)"
+      bridge_port="$(arg bridge_port)"
+      connect_timeout_sec="$(arg connect_timeout_sec)" />
+
+</robot>

@@ -1,0 +1,10 @@
+<library path="parol6_hardware_interface">
+  <class name="parol6_hardware_interface/Parol6SystemInterface"
+         type="parol6_hardware_interface::Parol6SystemInterface"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      ros2_control SystemInterface for the PAROL6 arm, driven through the
+      parol6_bridge TCP daemon rather than talking to parol6-server directly.
+    </description>
+  </class>
+</library>

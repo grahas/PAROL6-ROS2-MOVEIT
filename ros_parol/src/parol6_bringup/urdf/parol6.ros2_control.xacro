@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<!--
+  ros2_control fragment for the PAROL6 arm, as a xacro macro rather than a
+  string-spliced snippet. Lets parol6_with_tools.xacro pass bridge_host and
+  bridge_port straight through as normal xacro args instead of via
+  find/replace tokens.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="parol6_ros2_control" params="bridge_host:=127.0.0.1 bridge_port:=6001 connect_timeout_sec:=10.0">
+    <ros2_control name="Parol6System" type="system">
+      <hardware>
+        <plugin>parol6_hardware_interface/Parol6SystemInterface</plugin>
+        <param name="bridge_host">${bridge_host}</param>
+        <param name="bridge_port">${bridge_port}</param>
+        <param name="connect_timeout_sec">${connect_timeout_sec}</param>
+      </hardware>
+      <joint name="L1">
+        <command_interface name="position" />
+        <state_interface name="position" />
+        <state_interface name="velocity" />
+      </joint>
+      <joint name="L2">
+        <command_interface name="position" />
+        <state_interface name="position" />
+        <state_interface name="velocity" />
+      </joint>
+      <joint name="L3">
+        <command_interface name="position" />
+        <state_interface name="position" />
+        <state_interface name="velocity" />
+      </joint>
+      <joint name="L4">
+        <command_interface name="position" />
+        <state_interface name="position" />
+        <state_interface name="velocity" />
+      </joint>
+      <joint name="L5">
+        <command_interface name="position" />
+        <state_interface name="position" />
+        <state_interface name="velocity" />
+      </joint>
+      <joint name="L6">
+        <command_interface name="position" />
+        <state_interface name="position" />
+        <state_interface name="velocity" />
+      </joint>
+    </ros2_control>
+  </xacro:macro>
+</robot>
