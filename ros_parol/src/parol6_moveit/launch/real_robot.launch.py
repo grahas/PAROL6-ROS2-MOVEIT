@@ -16,7 +16,15 @@ Usage:
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    LogInfo,
+    OpaqueFunction,
+    RegisterEventHandler,
+    TimerAction,
+)
+from launch.event_handlers import OnProcessIO
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from moveit_configs_utils import MoveItConfigsBuilder
@@ -60,6 +68,11 @@ def _launch_setup(context, *args, **kwargs):
         ],
         name="parol6_bridge",
         output="screen",
+        # Line-buffer the bridge's logging. Python block-buffers stderr when
+        # it isn't a tty, which would hold back the "listening on" line the
+        # readiness handler below matches on -- turning a deterministic
+        # sequence back into the timing race it replaced.
+        emulate_tty=True,
     )
 
     moveit_config = (
@@ -139,14 +152,62 @@ def _launch_setup(context, *args, **kwargs):
     if context.launch_configurations.get("use_rviz", "true") == "true":
         entities += list(rviz_launch.entities)
 
-    # Give parol6_bridge a couple seconds to bind and connect to
-    # parol6-server before robot_state_publisher/controller_manager try to
-    # reach it. Parol6SystemInterface also retries internally
-    # (connect_timeout_sec in the xacro), so this is a courtesy, not a hard
-    # requirement.
-    delayed_demo = TimerAction(period=2.0, actions=entities)
+    # Start the rest of the stack only once parol6_bridge is genuinely
+    # accepting connections, rather than after a fixed delay.
+    #
+    # This used to be TimerAction(period=2.0). Two seconds is not enough:
+    # before the bridge binds its socket it has to reach parol6-server and
+    # complete a PING handshake (wait_ready, up to 10s on its own), so on a
+    # loaded machine it is routinely still starting when controller_manager
+    # comes up. Parol6SystemInterface::on_configure() then FATALs with
+    # "Could not connect to parol6_bridge: connect() failed: Connection
+    # refused" -- and that failure is permanent for the life of the process,
+    # taking the whole hardware component with it (every controller then
+    # fails to activate with "command interface 'L1/position' is not
+    # available"). Observed twice in one session.
+    #
+    # The bridge logs "parol6_bridge listening on ..." immediately after
+    # asyncio.start_server() returns, i.e. once the socket is bound and
+    # accepting -- real readiness, not a proxy for it.
+    launched = {"done": False}
 
-    return [bridge_process, delayed_demo]
+    def _start_stack(reason: str):
+        if launched["done"]:
+            return None
+        launched["done"] = True
+        return [
+            LogInfo(msg=f"parol6_bridge ready ({reason}) -- starting ros2_control/MoveIt"),
+            *entities,
+        ]
+
+    def _on_bridge_output(event):
+        if launched["done"]:
+            return None
+        text = event.text.decode(errors="replace") if isinstance(event.text, bytes) else str(event.text)
+        if "parol6_bridge listening on" in text:
+            return _start_stack("reported listening")
+        return None
+
+    bridge_ready = RegisterEventHandler(
+        OnProcessIO(
+            target_action=bridge_process,
+            on_stdout=_on_bridge_output,
+            on_stderr=_on_bridge_output,
+        )
+    )
+
+    # Safety net: never leave the stack unstarted just because the readiness
+    # line was missed (a logging-format change upstream would be enough to
+    # break the match). Past this point start anyway and let
+    # Parol6SystemInterface's own connect retry take it from there --
+    # strictly better than the old unconditional 2s, and a no-op whenever
+    # the handler above has already fired.
+    fallback = TimerAction(
+        period=30.0,
+        actions=[OpaqueFunction(function=lambda ctx: _start_stack("readiness not seen, starting anyway"))],
+    )
+
+    return [bridge_process, bridge_ready, fallback]
 
 
 def generate_launch_description():

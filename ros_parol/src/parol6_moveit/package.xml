@@ -41,6 +41,9 @@
        via parol6-server, instead of demo.launch.py's mock_components -->
   <exec_depend>parol6_bridge</exec_depend>
   <exec_depend>parol6_hardware_interface</exec_depend>
+  <!-- full_stack.launch.py: one-shot bringup on top of real_robot.launch.py -->
+  <exec_depend>parol6_control_services</exec_depend>
+  <exec_depend>parol6_dispenser</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>rviz_common</exec_depend>
